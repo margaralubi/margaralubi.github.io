@@ -29,6 +29,25 @@
     if (d) { d.setAttribute('no-rail', ''); obs.disconnect(); }
   }).observe(document.documentElement, { childList: true, subtree: true });
 </script>
+<script>
+  // Count up the big numbers in stat cards when their slide opens (e.g. 500K+, 91.75).
+  document.addEventListener('slidechange', function (e) {
+    var slide = e.detail && e.detail.slide;
+    if (!slide || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    slide.querySelectorAll('.stat b').forEach(function (el) {
+      var text = el.dataset.final || el.textContent;
+      var m = /^([0-9]+(?:[.][0-9]+)?)(.*)$/.exec(text.trim());
+      if (!m) return;
+      el.dataset.final = text;
+      var target = parseFloat(m[1]), suffix = m[2], dec = (m[1].split('.')[1] || '').length, t0 = performance.now();
+      (function tick(now) {
+        var p = Math.max(0, Math.min(1, (now - t0) / 1100)), k = 1 - Math.pow(1 - p, 4);
+        el.textContent = p < 1 ? (target * k).toFixed(dec) + suffix : text;
+        if (p < 1) requestAnimationFrame(tick);
+      })(t0);
+    });
+  });
+</script>
 </head>
 <body>
 <x-dc>
@@ -119,6 +138,38 @@
   .tag { position: absolute; left: 16px; bottom: 16px; z-index: 2; pointer-events: none; padding: 8px 16px; border-radius: 999px; font-size: 16px; font-weight: 700;
          background: rgba(254,254,253,.82); color: var(--ink); border: 1px solid #fff; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
   .tag.r { left: auto; right: 16px; }
+
+  /* ---------- motion ---------- */
+  /* Slide entrance: content is visible by default (print, reduced motion); it animates in only on the active slide. */
+  :root { --ease-out: cubic-bezier(0.23, 1, 0.32, 1); }
+  @keyframes m-fade { from { opacity: 0; } }
+  @keyframes m-rise { from { opacity: 0; translate: 0 22px; } }
+  @keyframes m-pop  { from { opacity: 0; translate: 0 18px; scale: 0.96; } }
+  :is(.frame, .glass, .chip, .list li, .stat):nth-child(2) { --d: 1; }
+  :is(.frame, .glass, .chip, .list li, .stat):nth-child(3) { --d: 2; }
+  :is(.frame, .glass, .chip, .list li, .stat):nth-child(4) { --d: 3; }
+  :is(.frame, .glass, .chip, .list li, .stat):nth-child(5) { --d: 4; }
+  :is(.frame, .glass, .chip, .list li, .stat):nth-child(6) { --d: 5; }
+  :is(.frame, .glass, .chip, .list li, .stat):nth-child(n+7) { --d: 6; }
+  @media (prefers-reduced-motion: no-preference) {
+    [data-deck-active] .top { animation: m-fade 500ms var(--ease-out) backwards; }
+    [data-deck-active] :is(.kick, h1, h2) { animation: m-rise 700ms var(--ease-out) 60ms backwards; }
+    [data-deck-active] p.body { animation: m-rise 700ms var(--ease-out) 140ms backwards; }
+    [data-deck-active] :is(.chip, .list li) { animation: m-rise 600ms var(--ease-out) calc(220ms + var(--d, 0) * 50ms) backwards; }
+    [data-deck-active] :is(.glass, .stat) { animation: m-pop 700ms var(--ease-out) calc(180ms + var(--d, 0) * 70ms) backwards; }
+    [data-deck-active] .frame { animation: m-pop 800ms var(--ease-out) calc(160ms + var(--d, 0) * 70ms) backwards; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-deck-active] :is(h1, h2, .glass, .frame) { animation: m-fade 300ms ease backwards; }
+  }
+  /* Hover: small lift on photos and certificate cards, mouse only. */
+  .frame, a.glass { transition: translate 250ms var(--ease-out), box-shadow 250ms ease; }
+  image-slot::part(image) { transition: scale 400ms var(--ease-out); }
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .frame:hover, a.glass:hover { translate: 0 -6px; }
+    .frame:hover image-slot::part(image) { scale: 1.03; }
+  }
+  @media print { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </helmet>
 <x-import component-from-global-scope="deck-stage" from="./deck-stage.js" width="1920" height="1080" hint-size="100%,100%" data-uneditable="">
@@ -491,8 +542,8 @@
   <div class="frame" style="width:220px;height:220px;border-radius:50%;position:relative;padding:10px;box-sizing:border-box;background:rgba(255,255,255,.08)">
     <image-slot id="portrait-closing" src="assets/headshot.webp" fit="cover" shape="circle" placeholder="Headshot"></image-slot>
   </div>
-  <h2 class="h2" style="font-size:92px;max-width:1400px;position:relative">Ready to grow <span class="ital blue">with BSI.</span></h2>
-  <p class="body" style="font-size:27px;max-width:1120px;position:relative">I am applying to the Officer Development Program to build a long-term career at Bank Syariah Indonesia. I bring data skills from inside BSI, composure in formal settings, and experience leading teams.</p>
+  <h2 class="h2" style="font-size:96px;max-width:1400px;position:relative">Thank you <span class="ital blue">for your time.</span></h2>
+  <p class="body" style="font-size:27px;max-width:1080px;position:relative">I would be glad to talk about how my data work, steady hand in formal settings, and team leadership can help your organization.</p>
   <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:14px;position:relative">
     <a class="chip solid" href="mailto:maraja.nagara@gmail.com" style="font-size:23px;padding:16px 30px">maraja.nagara@gmail.com</a>
     <span class="chip" style="font-size:23px;padding:16px 30px">+62 811-8993-539</span>
